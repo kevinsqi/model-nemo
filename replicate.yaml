@@ -1,0 +1,21 @@
+# replicate.yaml
+name: model-nemo
+run:
+  # 1) Pick a base Docker image that has Python + (optionally) CUDA dependencies.
+  #    This example uses a slim Python, but if you need CUDA drivers, you might need nvidia/cuda-based images.
+  image: python:3.10-slim
+
+  # 2) Install your dependencies.
+  install:
+    - apt-get update && apt-get install -y git
+    - pip install --upgrade pip
+    - pip install torch --extra-index-url https://download.pytorch.org/whl/cu118 # or appropriate CUDA version
+    - pip install transformers>=4.26.0
+    - pip install accelerate
+    - pip install sentencepiece # sometimes needed for tokenizers
+    - pip install safetensors
+    # If you want to test 8-bit or 4-bit, add bitsandbytes. For BF16, normal torch + transformers is typically enough.
+
+  # 3) The command that runs your model. For Replicate, you can just run the `predict.py` script.
+  command:
+    - python predict.py
