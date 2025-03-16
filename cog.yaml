@@ -1,0 +1,10 @@
+# cog.yaml
+build:
+  python_version: "3.10"
+  run:
+    - pip install torch --extra-index-url https://download.pytorch.org/whl/cu118
+    - pip install transformers>=4.26.0
+    - pip install accelerate
+    - pip install safetensors
+    - pip install sentencepiece
+predict: "predict.py:Predictor" # We'll define a Predictor class in predict.py

@@ -1,38 +1,47 @@
 # predict.py
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
+from cog import BasePredictor, Input
 
-# This is your Hugging Face model repo name, e.g. "username/merged_llm"
-HF_MODEL_ID = "alexxi19/ft-v1-nemo-base-merge-v1"
+class Predictor(BasePredictor):
+    def setup(self):
+        """
+        This runs once when the container starts.
+        Load your Hugging Face model & tokenizer here.
+        """
+        self.model_id = "alexxi19/ft-v1-nemo-base-merge-v1"
+        print("Loading tokenizer...")
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_id)
 
-# Load tokenizer and model at global scope so it’s loaded only once
-print("Loading tokenizer...")
-tokenizer = AutoTokenizer.from_pretrained(HF_MODEL_ID)
-
-print("Loading model...")
-model = AutoModelForCausalLM.from_pretrained(
-    HF_MODEL_ID,
-    torch_dtype=torch.bfloat16,
-    device_map="auto"  # automatically place on GPU if available
-)
-
-def predict(prompt: str = "Hello, world!", max_new_tokens: int = 50) -> str:
-    """
-    Called by Replicate for each inference. 
-    :param prompt: The input text prompt
-    :param max_new_tokens: How many tokens to generate
-    :return: The generated text
-    """
-    # Tokenize the input
-    inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
-
-    # Generate
-    with torch.no_grad():
-        outputs = model.generate(
-            **inputs,
-            max_new_tokens=max_new_tokens,
-            do_sample=True,
-            temperature=0.7
+        print("Loading model...")
+        self.model = AutoModelForCausalLM.from_pretrained(
+            self.model_id,
+            torch_dtype=torch.bfloat16,  # or whatever precision you want
+            device_map="auto"            # place on GPU if available
         )
-    # Decode the outputs
-    return tokenizer.decode(outputs[0], skip_special_tokens=True)
+        
+        # If the model is private on HF, handle auth tokens or configuration.
+        # e.g. from huggingface_hub import login
+        # login(os.environ["HUGGINGFACE_HUB_TOKEN"])
+
+    def predict(
+        self,
+        prompt: str = Input(description="Input prompt", default="Hello, world!"),
+        max_new_tokens: int = Input(description="Max tokens to generate", default=50),
+        temperature: float = Input(description="Temperature for sampling", default=0.7),
+    ) -> str:
+        """
+        Run inference on a single input. Returns the generated text.
+        """
+        inputs = self.tokenizer(prompt, return_tensors="pt").to(self.model.device)
+
+        with torch.no_grad():
+            outputs = self.model.generate(
+                **inputs,
+                max_new_tokens=max_new_tokens,
+                do_sample=True,
+                temperature=temperature
+            )
+
+        # Decode and return the text
+        return self.tokenizer.decode(outputs[0], skip_special_tokens=True)
